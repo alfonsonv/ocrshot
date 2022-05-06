@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# Siddharth Dushantha 2022
+# 
+# https://github.com/sdushantha/bin
+#
+
+image_file="/tmp/ocr.png"
+text_file="/tmp/ocrshot"
+# Check if the needed dependencies are installed
+dependencies=(tesseract)
+for dependency in "${dependencies[@]}"; do
+    type -p "$dependency" &>/dev/null || {
+        # The reason why we are sending the error as a notification is because
+        # user is most likely going to run this script by binding it to their
+        # keyboard, therefor they cant see any text that is outputed using echo
+        notify-send "ocr" "Could not find '${dependency}', is it installed?"
+        echo "Could not find '${dependency}', is it installed?"
+        exit 1
+    }
+done
+
+# Take screenshot by selecting the area
+maim -s "$image_file"
+
+# Get the exit code of the previous command.
+# So in this case, it is the screenshot command. If it did not exit with an
+# exit code 0, then it means the user canceled the process of taking a
+# screenshot by doing something like pressing the escape key
+status=$?
+
+# If the user pressed the escape key or did something to terminate the proccess
+# taking a screenshot, then just exit
+[ $status -ne 0 ] && exit 1
+
+# Use tesseract to decode the text from the image
+tesseract "$image_file" "$text_file" --dpi 70 quiet
+# tesseract adds the  .txt at the end of the ouputfilename, update variable
+text_file="/tmp/ocrshot.txt"
+# Remove last line adde by tesseract
+sed -i '$ d' "$text_file"
+# Capture the content of the text file output
+decoded_text=$(cat "$text_file")
+
+if [ -z "$decoded_text" ]; then
+    notify-send "ocrshot" "no text was detected"
+    exit 1
+fi
+
+# Copy text to clipboard
+printf %b "$decoded_text" | xclip -selection clip
+
+# Let us know that something was decoded
+notify-send "ocrshot" "$decoded_text"
+
+# Cleaning up the trash that was left behind
+rm $image_file
+rm $text_file
