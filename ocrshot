@@ -13,8 +13,10 @@
 
 image_file="/tmp/ocr.png"
 text_file="/tmp/ocrshot"
+activewindow=$(xdotool getactivewindow)
+
 # Check if the needed dependencies are installed
-dependencies=(tesseract)
+dependencies=(tesseract xdotool)
 for dependency in "${dependencies[@]}"; do
     type -p "$dependency" &>/dev/null || {
         # The reason why we are sending the error as a notification is because
@@ -25,6 +27,9 @@ for dependency in "${dependencies[@]}"; do
         exit 1
     }
 done
+
+# Minimize terminal window before take the screenshot
+xdotool windowminimize $activewindow
 
 # Take screenshot by selecting the area
 maim -s "$image_file"
@@ -62,3 +67,6 @@ notify-send "ocrshot" "$decoded_text"
 # Cleaning up the trash that was left behind
 rm $image_file
 rm $text_file
+
+# Minimize terminal window before take the screenshot
+xdotool windowactivate $activewindow
