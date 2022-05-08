@@ -14,6 +14,15 @@
 image_file="/tmp/ocr.png"
 text_file="/tmp/ocrshot"
 activewindow=$(xdotool getactivewindow)
+nominimize=0
+
+# If -nominimize parameter is detected the script wont try to minimize before screenshot
+for i in "$@" ; do
+    if [[ $i == "-nominimize" ]] ; then
+        nominimize=1;
+        break
+    fi
+done
 
 # Check if the needed dependencies are installed
 dependencies=(tesseract xdotool)
@@ -28,8 +37,11 @@ for dependency in "${dependencies[@]}"; do
     }
 done
 
-# Minimize terminal window before take the screenshot
-xdotool windowminimize $activewindow
+if [ $nominimize -eq 0 ]
+  then
+    # Minimize terminal window before take the screenshot
+    xdotool windowminimize $activewindow
+fi
 
 # Take screenshot by selecting the area
 maim -s "$image_file"
@@ -42,14 +54,17 @@ status=$?
 
 # If the user pressed the escape key or did something to terminate the proccess
 # taking a screenshot, then just exit
-[ $status -ne 0 ] && exit 1
+[ $status -ne 0 ] && xdotool windowactivate $activewindow && exit 1
 
 # Use tesseract to decode the text from the image
 tesseract "$image_file" "$text_file" --dpi 70 quiet
+
 # tesseract adds the  .txt at the end of the ouputfilename, update variable
 text_file="/tmp/ocrshot.txt"
+
 # Remove last line adde by tesseract
 sed -i '$ d' "$text_file"
+
 # Capture the content of the text file output
 decoded_text=$(cat "$text_file")
 
@@ -68,5 +83,10 @@ notify-send "ocrshot" "$decoded_text"
 rm $image_file
 rm $text_file
 
-# Minimize terminal window before take the screenshot
-xdotool windowactivate $activewindow
+
+if [ $nominimize -eq 0 ]
+  then
+    # Minimize terminal window before take the screenshot
+    xdotool windowactivate $activewindow
+fi
+
